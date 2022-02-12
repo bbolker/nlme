@@ -72,7 +72,7 @@ nlme.nlsList <-
   thisModel <- last.call[["model"]]
   thisCall[["model"]] <-
     eval(parse(text=paste( deparse (getResponseFormula (thisModel)[[2]]),
-                          c_deparse(getCovariateFormula(thisModel)[[2]]),sep="~")))
+                          deparse1(getCovariateFormula(thisModel)[[2]]),sep="~")))
   ## create "fixed" and "start"
   cf <- na.omit(coef(model))
   start <- list(fixed = unlist(lapply(cf, median, na.rm = TRUE)))
@@ -316,7 +316,7 @@ nlme.formula <-
         if (corQ < lmeQ) {
           warning("cannot use smaller level of grouping for \"correlation\" than for \"random\". Replacing the former with the latter.")
           frm <- paste("~",
-                       c_deparse(getCovariateFormula(formula(correlation))[[2]]),
+                       deparse1(getCovariateFormula(formula(correlation))[[2]]),
                        "|", deparse(groups[[2]]))
           attr(correlation, "formula") <- eval(parse(text = frm))
         }
@@ -328,7 +328,7 @@ nlme.formula <-
     } else {
       ## using the same grouping as in random
       frm <- paste("~",
-                   c_deparse(getCovariateFormula(formula(correlation))[[2]]),
+                   deparse1(getCovariateFormula(formula(correlation))[[2]]),
                    "|", deparse(groups[[2]]))
       attr(correlation, "formula") <- eval(parse(text = frm))
       corQ <- lmeQ <- 1

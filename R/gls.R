@@ -567,7 +567,7 @@ augPred.gls <-
         pr.var <- asOneSidedFormula(primary)[[2L]]
         primary <- eval(pr.var, data)
     }
-    prName <- c_deparse(pr.var)
+    prName <- deparse1(pr.var)
     newprimary <- seq(from = minimum, to = maximum, length.out = length.out)
     groups <- getGroups(object) # much simpler here than in augPred.lme
     grName <- ".groups"

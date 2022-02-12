@@ -1080,7 +1080,7 @@ anova.lme <-
                           stringsAsFactors = TRUE)
       }
     }
-    row.names(aod) <- vapply(as.list(ancall[-1L]), c_deparse, "")
+    row.names(aod) <- vapply(as.list(ancall[-1L]), deparse1, "")
     attr(aod, "rt") <- rt
     attr(aod, "verbose") <- verbose
   }
@@ -1110,7 +1110,7 @@ augPred.lme <-
     pr.var <- asOneSidedFormula(primary)[[2L]]
     primary <- eval(pr.var, data)
   }
-  prName <- c_deparse(pr.var)
+  prName <- deparse1(pr.var)
   newprimary <- seq(from = minimum, to = maximum, length.out = length.out)
 
   Q <- object$dims$Q                    # number of levels

@@ -149,7 +149,7 @@ augPred.lmList <-
     pr.var <- asOneSidedFormula(primary)[[2L]]
     primary <- eval(pr.var, data)
   }
-  prName <- c_deparse(pr.var)
+  prName <- deparse1(pr.var)
   newprimary <- seq(from = minimum, to = maximum, length.out = length.out)
   groups <- getGroups(object)
   grName <- deparse(gr.v <- getGroupsFormula(object)[[2]])
@@ -668,7 +668,7 @@ plot.lmList <-
   if (inherits(data, "groupedData")) {	# save labels and units, if present
     ff <- formula(data)
     rF <- deparse(getResponseFormula(ff)[[2]])
-    cF <- c_deparse(getCovariateFormula(ff)[[2]])
+    cF <- deparse1(getCovariateFormula(ff)[[2]])
     lbs <- attr(data, "labels")
     unts <- attr(data, "units")
     if (!is.null(lbs$x)) cL <- paste(lbs$x, unts$x) else cF <- NULL
@@ -692,7 +692,7 @@ plot.lmList <-
   argForm <- ~ .x
   argData <- as.data.frame(.x)
   if (is.null(xlab <- attr(.x, "label"))) {
-    xlab <- c_deparse(covF[[2]])
+    xlab <- deparse1(covF[[2]])
     if (!is.null(cF) && (xlab == cF)) xlab <- cL
     else if (!is.null(rF) && (xlab == rF)) xlab <- rL
   }
@@ -955,7 +955,7 @@ print.lmList <- function(x, pool = attr(x, "pool"), ...)
   cat("Call:\n")
   form <- formula(x)
   cat("  Model:", deparse(getResponseFormula(form)[[2]]),
-      "~", c_deparse(getCovariateFormula(form)[[2]]), "|",
+      "~", deparse1(getCovariateFormula(form)[[2]]), "|",
       deparse(getGroupsFormula(x)[[2]]), "\n")
   if (!is.null(mCall$level)) {
     cat(" Level:", mCall$level, "\n")
@@ -981,7 +981,7 @@ print.summary.lmList <- function(x, ...)
   cat("Call:\n")
   form <- formula(x)
   cat("  Model:", deparse(getResponseFormula(form)[[2]]),
-      "~", c_deparse(getCovariateFormula(form)[[2]]), "|",
+      "~", deparse1(getCovariateFormula(form)[[2]]), "|",
       deparse(attr(x, "groupsForm")[[2]]), "\n")
   if (!is.null(x$call$level)) {
     cat(" Level:", x$call$level, "\n")

@@ -290,7 +290,7 @@ plot.nls <-
   if (inherits(data, "groupedData")) {	# save labels and units, if present
     ff <- formula(data)
     rF <- deparse(getResponseFormula(ff)[[2]])
-    cF <- c_deparse(getCovariateFormula(ff)[[2]])
+    cF <- deparse1(getCovariateFormula(ff)[[2]])
     lbs <- attr(data, "labels")
     unts <- attr(data, "units")
     if (!is.null(lbs$x)) cL <- paste(lbs$x, unts$x) else cF <- NULL
@@ -811,5 +811,3 @@ Variogram.default <-
   val
 }
 
-## local function for complete deparsing
-c_deparse <- function(...) paste(deparse(..., width.cutoff=500), collapse="")
