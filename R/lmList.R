@@ -976,7 +976,9 @@ print.lmList <- function(x, pool = attr(x, "pool"), ...)
   invisible(x)
 }
 
-print.summary.lmList <- function(x, ...)
+print.summary.lmList <- function(x, digits = max(3, getOption("digits") - 3),
+                                 signif.stars = getOption("show.signif.stars"),
+                                 ...)
 {
   cat("Call:\n")
   form <- formula(x)
@@ -990,7 +992,8 @@ print.summary.lmList <- function(x, ...)
   cat("Coefficients:\n")
   for(i in dimnames(coef(x))[[3]]) {
     cat("  ",i,"\n")
-    print(coef(x)[,,i], ...)
+    printCoefmat(coef(x)[,,i], digits = digits, signif.stars = signif.stars,
+            na.print = "NA", ...)
   }
   if(x$pool) {
     cat("\n")
