@@ -80,12 +80,14 @@ confint.nlsList <- function(object, ...) {
 	simplify=FALSE)
 }
 
-if (getRversion() < "4.0.0") {
-  ## NB: R >= 4.0.0's deparse1() is a generalization of previous c_deparse()
-  assign('deparse1', envir = topenv(),
-         function (expr, collapse = " ", width.cutoff = 500L, ...)
-           paste(deparse(expr, width.cutoff, ...), collapse = collapse)
-         )
+.onLoad <- function(libname, pkgname) {
+  if (getRversion() < "4.0.0") {
+    ## NB: R >= 4.0.0's deparse1() is a generalization of previous c_deparse()
+    assign('deparse1', envir = topenv(),
+           function (expr, collapse = " ", width.cutoff = 500L, ...)
+             paste(deparse(expr, width.cutoff, ...), collapse = collapse)
+           )
+  }
 }
 
 .ns <- environment() # == asNamespace("nlme")
