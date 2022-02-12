@@ -18,8 +18,6 @@
 #  http://www.r-project.org/Licenses/
 #
 
-Rv <- getRversion()
-
 `%||%` <- function(x, y) if(is.null(x)) y else x
 
 ## Note that  require( stats )  has already happened ...
@@ -82,7 +80,7 @@ confint.nlsList <- function(object, ...) {
 	simplify=FALSE)
 }
 
-if(Rv < "4.0.0") {
+if (getRversion() < "4.0.0") {
   ## NB: R >= 4.0.0's deparse1() is a generalization of previous c_deparse()
   assign('deparse1', envir = topenv(),
          function (expr, collapse = " ", width.cutoff = 500L, ...)
