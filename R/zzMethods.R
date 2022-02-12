@@ -18,6 +18,8 @@
 #  http://www.r-project.org/Licenses/
 #
 
+Rv <- getRversion()
+
 `%||%` <- function(x, y) if(is.null(x)) y else x
 
 ## Note that  require( stats )  has already happened ...
