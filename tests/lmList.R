@@ -27,3 +27,19 @@ stopifnot(inherits(p.iq, "trellis"),
                     list(xlab = "R.Eff.", ylab = "Subj")),
           formula(p.iq) == (group ~ intervals | what))
 p.iq
+
+
+## bug #16452
+oo <- subset(Orthodont, age<= 12)
+oo <- oo[-(1:2),]
+fm6 <- nlme::lmList(distance ~ age | Subject, data= oo)
+stopifnot(identical(unlist(coef(fm6)["M01",]),
+                    c(`(Intercept)` = 29, age = NA_real_))
+          )
+ss <- suppressWarnings(summary(fm6))
+
+fm2Pixel.lis<-lmList(pixel~day+I(day^2)|Dog, Pixel)
+cc <- coef(fm2Pixel.lis)
+stopifnot(all.equal(cc["9", "I(day^2)"], NA_real_),
+          identical(dim(cc), c(10L, 3L)))
+

@@ -198,8 +198,9 @@ coef.lmList <-
   non.null <- !vapply(coefs, is.null, NA)
   ## size the data frame to cope with combined levels for factors
   ## and name the columns so can fill by name
-  if (sum(non.null) > 0) {
-    coefNames <- unique(as.vector(sapply(coefs[non.null], names)))
+  if (any(non.null)) {
+    ## n.b. can't use vapply here
+    coefNames <- unique(unlist(lapply(coefs[non.null], names)))
     co <- matrix(NA,
                  ncol=length(coefNames),
                  nrow=length(coefs),
@@ -1341,7 +1342,7 @@ summary.lmList <-
     sum.lst <- lapply(object, function(el) if(!is.null(el)) summary(el))
     nonNull <- !vapply(sum.lst, is.null, NA)
     if(!any(nonNull)) return(NULL)
-    template <- sum.lst[[match(TRUE, nonNull)]] # the first one
+    template <- sum.lst[[match(TRUE, nonNull)]] # the first non-null one
     val <- as.list(setNames(nm = names(template)))
     for (i in names(template)) {
         val[[i]] <- lapply(sum.lst, `[[`, i)
@@ -1349,7 +1350,7 @@ summary.lmList <-
     }
     ## complete set of coefs [only used in to.3d.array()]
     cfNms <-
-      unique(as.vector(sapply(sum.lst[nonNull],
+      unique(unlist(sapply(sum.lst[nonNull],
                               function(x) dimnames(x[['coefficients']])[[1]])))
     ## re-arrange the matrices into 3d arrays
     for(i in c("parameters", "cov.unscaled", "correlation", "coefficients"))
