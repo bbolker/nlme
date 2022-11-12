@@ -6,8 +6,6 @@
 \title{Summarize an lmList Object}
 \usage{
 \method{summary}{lmList}(object, pool, \dots)
-\method{print}{summary.lmList}(x, digits = max(3, getOption("digits") - 3),
-      signif.stars = getOption("show.signif.stars"), \dots)
 }
 \alias{summary.lmList}
 \arguments{
@@ -98,6 +96,5 @@
 \examples{
 fm1 <- lmList(distance ~ age | Subject, Orthodont)
 summary(fm1)
-print(summary(fm1), signif.stars = FALSE)
 }
 \keyword{models}

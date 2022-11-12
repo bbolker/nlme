@@ -1,6 +1,6 @@
 ###      Methods for generics from newGenerics.q for some standard classes
 ###
-### Copyright 2006-2020  The R Core team
+### Copyright 2006-2022  The R Core team
 ### Copyright 1997-2003  Jose C. Pinheiro,
 ###                      Douglas M. Bates <bates@stat.wisc.edu>
 
@@ -140,19 +140,13 @@ getGroupsFormula.default <-
     ## no conditioning expression
     return(NULL)
 
-  ## val <- list( asOneSidedFormula( form[[ 3 ]] ) )
-  val <- splitFormula(asOneSidedFormula(form[[3]]), sep = sep)
+  val <- eval(call("~", form[[3]]), .GlobalEnv)
+  if (!asList)
+    return(val)
+  
+  val <- splitFormula(val, sep = sep)
   names(val) <- unlist(lapply(val, function(el) deparse(el[[2]])))
-#  if (!missing(level)) {
-#    if (length(level) == 1) {
-#      return(val[[level]])
-#    } else {
-#      val <- val[level]
-#    }
-#  }
-  if (asList) as.list(val)
-  else as.formula(eval(parse(text = paste("~",  paste(names(val),
-                               collapse = sep)))))
+  as.list(val)
 }
 
 Names.formula <-
@@ -290,7 +284,7 @@ plot.nls <-
   if (inherits(data, "groupedData")) {	# save labels and units, if present
     ff <- formula(data)
     rF <- deparse(getResponseFormula(ff)[[2]])
-    cF <- deparse1(getCovariateFormula(ff)[[2]])
+    cF <- c_deparse(getCovariateFormula(ff)[[2]])
     lbs <- attr(data, "labels")
     unts <- attr(data, "units")
     if (!is.null(lbs$x)) cL <- paste(lbs$x, unts$x) else cF <- NULL
@@ -811,3 +805,5 @@ Variogram.default <-
   val
 }
 
+## local function for complete deparsing
+c_deparse <- function(...) paste(deparse(..., width.cutoff=500), collapse="")

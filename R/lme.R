@@ -1,6 +1,6 @@
 ###            Fit a general linear mixed effects model
 ###
-### Copyright 2005-2021  The R Core team
+### Copyright 2005-2022  The R Core team
 ### Copyright 1997-2003  Jose C. Pinheiro,
 ###                      Douglas M. Bates <bates@stat.wisc.edu>
 ###
@@ -154,7 +154,7 @@ lme.formula <-
   ## checking arguments
   ##
   if (!inherits(fixed, "formula") || length(fixed) != 3) {
-    stop("\nfixed-effects model must be a formula of the form \"resp ~ pred\"")
+    stop("fixed-effects model must be a formula of the form \"resp ~ pred\"")
   }
   method <- match.arg(method)
   REML <- method == "REML"
@@ -262,22 +262,21 @@ lme.formula <-
 
   ## obtaining basic model matrices
   N <- nrow(grps)
-  Z <- model.matrix(reSt, dataMix)
+  Z <- model.matrix(reSt, dataMix)      # stores contrasts in matrix form
   ncols <- attr(Z, "ncols")
   Names(lmeSt$reStruct) <- attr(Z, "nams")
   ## keeping the contrasts for later use in predict
   contr <- attr(Z, "contr")
   X <- model.frame(fixed, dataMix)
   Terms <- attr(X, "terms")
+  if (length(attr(Terms, "offset")))
+    stop("offset() terms are not supported")
   auxContr <- lapply(X, function(el)
     if (inherits(el, "factor") &&
         length(levels(el)) > 1) contrasts(el))
   contr <- c(contr, auxContr[is.na(match(names(auxContr), names(contr)))])
   contr <- contr[!unlist(lapply(contr, is.null))]
   X <- model.matrix(fixed, data=X)
-  ## check rank/drop again (why do we recompute here)?
-  ## (check attributes of X instead?)
-  X <- chkRank.drop.cols(X, action = controlvals$rankdefAction)
   y <- eval(fixed[[2L]], dataMix)
   ncols <- c(ncols, dim(X)[2L], 1)
   Q <- ncol(grps)
@@ -470,9 +469,6 @@ getFixDF <- function(X, grps, ngrps, assign = attr(X, "assign"), terms)
     namTerms <- attr(terms, "term.labels")
     if (attr(terms, "intercept") > 0) {
       namTerms <- c("(Intercept)", namTerms)
-    }
-    if (!is.null(dropped <- attr(X, "col.dropped"))) {
-      namTerms <- namTerms[-dropped]
     }
     namTerms <- factor(assign, labels = namTerms)
     assign <- split(order(assign), namTerms)
@@ -1080,7 +1076,7 @@ anova.lme <-
                           stringsAsFactors = TRUE)
       }
     }
-    row.names(aod) <- vapply(as.list(ancall[-1L]), deparse1, "")
+    row.names(aod) <- vapply(as.list(ancall[-1L]), c_deparse, "")
     attr(aod, "rt") <- rt
     attr(aod, "verbose") <- verbose
   }
@@ -1093,7 +1089,7 @@ augPred.lme <-
   function(object, primary = NULL, minimum = min(primary),
            maximum = max(primary), length.out = 51L, level = Q, ...)
 {
-  data <- eval(object$call$data)
+  data <- eval.parent(object$call$data)
   if (!inherits(data, "data.frame")) {
     stop(gettextf("data in %s call must evaluate to a data frame",
                   sQuote(substitute(object))), domain = NA)
@@ -1110,7 +1106,7 @@ augPred.lme <-
     pr.var <- asOneSidedFormula(primary)[[2L]]
     primary <- eval(pr.var, data)
   }
-  prName <- deparse1(pr.var)
+  prName <- c_deparse(pr.var)
   newprimary <- seq(from = minimum, to = maximum, length.out = length.out)
 
   Q <- object$dims$Q                    # number of levels
@@ -1262,7 +1258,7 @@ fitted.lme <-
   } else napredict(object$na.action, val[, level])
 }
 
-formula.lme <- function(x, ...) eval(x$call$fixed)
+formula.lme <- function(x, ...) formula(x$terms)
 
 fixef.lme <- function(object, ...) object$coefficients$fixed
 
@@ -1680,7 +1676,7 @@ plot.ranef.lme <-
     eLen <- length(eNames)
     argData <- data.frame(.pars = as.vector(unlist(x[, eNames])),
                           .enames = ordered(rep(eNames, rep(nrow(x), eLen)),
-                                            level = eNames), check.names = FALSE)
+                                            levels = eNames), check.names = FALSE)
     for(i in names(x)[is.na(match(names(x), eNames))]) {
       argData[[i]] <- rep(x[[i]], eLen)
     }
@@ -1857,22 +1853,25 @@ predict.lme <-
     reSt <- NULL
   }
 
-  mfArgs <- list(formula = asOneFormula(formula(reSt), fixed),
-                 data = newdata, na.action = na.action,
-                 drop.unused.levels = TRUE)
-  dataMix <- do.call(model.frame, mfArgs)
+  ## use xlev to make sure factor levels are the same as in contrasts
+  ## and to support character-type 'newdata' for factors
+  contr <- object$contrasts  # these are in matrix form
+  dataMix <- model.frame(formula = asOneFormula(formula(reSt), fixed),
+                         data = newdata, na.action = na.action,
+                         drop.unused.levels = TRUE,
+                         xlev = lapply(contr, rownames))
   origOrder <- row.names(dataMix)	# preserve the original order
   whichRows <- match(origOrder, row.names(newdata))
 
   if (maxQ > 0) {
     ## sort the model.frame by groups and get the matrices and parameters
     ## used in the estimation procedures
-    grps <- getGroups(newdata,
+    grps <- getGroups(newdata,          # (unused levels are dropped here)
                       eval(substitute(~ 1 | GRPS,
                                       list(GRPS = groups[[2]]))))
     ## ordering data by groups
     if (inherits(grps, "factor")) {	# single level
-      grps <- grps[whichRows, drop = TRUE]
+      grps <- grps[whichRows]
       oGrps <- data.frame(grps)
       ## checking if there are missing groups
       if (any(naGrps <- is.na(grps))) {
@@ -1883,9 +1882,7 @@ predict.lme <-
       row.names(grps) <- origOrder
       names(grps) <- names(oGrps) <- as.character(deparse((groups[[2L]])))
     } else {
-      grps <- oGrps <-
-        do.call(data.frame, ## FIXME?  better  lapply(*, drop)   ??
-                lapply(grps[whichRows, ], function(x) x[drop = TRUE]))
+      grps <- oGrps <- grps[whichRows, ]
       ## checking for missing groups
       if (any(naGrps <- is.na(grps))) {
         ## need to input missing groups
@@ -1896,7 +1893,6 @@ predict.lme <-
       }
       ord <- do.call(order, grps)
       ## making group levels unique
-      grps[, 1] <- grps[, 1][drop = TRUE]
       for(i in 2:ncol(grps)) {
         grps[, i] <-
           as.factor(paste(as.character(grps[, i-1]),
@@ -1907,28 +1903,10 @@ predict.lme <-
     grps <- grps[ord, , drop = FALSE]
     dataMix <- dataMix[ord, ,drop = FALSE]
   }
-  ## making sure factor levels are the same as in contrasts
-  contr <- object$contrasts
-  for(i in names(dataMix)) {
-    if (inherits(dataMix[,i], "factor") && !is.null(contr[[i]])) {
-      levs <- levels(dataMix[,i])
-      levsC <- dimnames(contr[[i]])[[1L]]
-      if (any(wch <- is.na(match(levs, levsC)))) {
-        stop(sprintf(ngettext(sum(wch),
-                              "level %s not allowed for %s",
-                              "levels %s not allowed for %s"),
-                     paste(levs[wch], collapse = ",")),
-             domain = NA)
-      }
-      ## if (length(levs) < length(levsC)) {
-      ##   if (inherits(dataMix[,i], "ordered")) {
-      ##     dataMix[,i] <- ordered(as.character(dataMix[,i]), levels = levsC)
-      ##   } else {
-      ##     dataMix[,i] <- factor(as.character(dataMix[,i]), levels = levsC)
-      ##   }
-      ## }
-      attr(dataMix[,i], "contrasts") <- contr[[i]][levs, , drop = FALSE]
-    }
+  ## restore contrasts for the below model.matrix() calls (which may use
+  ## different factor variables, so we avoid passing the whole contr list)
+  for(i in intersect(names(dataMix), names(contr))) {
+    attr(dataMix[[i]], "contrasts") <- contr[[i]]
   }
   if (maxQ > 0) {
     revOrder <- match(origOrder, row.names(dataMix)) # putting in orig. order
@@ -2883,7 +2861,6 @@ lmeControl <-
            optimMethod = "BFGS", natural = TRUE,
            sigma = NULL, ## 17-11-2015; Fixed sigma patch; SH Heisterkamp; Quantitative Solutions
            allow.n.lt.q = FALSE, # 23-01-2019 (NA would be back compatible)
-           rankdefAction = "message",
            ...)
 {
   if(is.null(sigma))
@@ -2898,66 +2875,9 @@ lmeControl <-
        minAbsParApVar = minAbsParApVar, natural = natural,
        sigma = sigma,
        allow.n.lt.q = allow.n.lt.q,
-       rankdefAction = rankdefAction,
        ...)
 }
 
-## slightly simplified version from lme4
-chkRank.drop.cols <- function(X,
-                              action = c("silent", "skip",
-                                         "message", "warning", "stop"),
-                              tol = 1e-7, method = "qr") {
-  ## Test and match arguments:
-  stopifnot(is.matrix(X))
-  action <- match.arg(action)
-
-  if (action == "skip") return(X)
-
-  p <- ncol(X)
-  if (action == "stop") {
-    if ((rX <- rankMatrix(X, tol=tol, method=method)) < p)
-      stop(gettextf(sub("\n +", "\n",
-                        "the fixed-effects model matrix is column rank deficient (rank(X) = %d < %d = p);
-                   the fixed effects will be jointly unidentifiable"),
-                   rX, p), call. = FALSE)
-    } else {
-      ## Perform the qr-decomposition of X using LINPACK method,
-      ## as we need the "good" pivots (and the same as lm()):
-      ## this rankMatrix(X, method="qrLINPACK"):  FIXME?  rankMatrix(X, method= "qr.R")
-      qr.X <- qr(X, tol = tol, LAPACK = FALSE)
-      rnkX <- qr.X$rank
-      if (rnkX == p)
-        return(X) ## return X if X has full column rank
-
-      msg <- sprintf(ngettext(p - rnkX,
-                              "fixed-effect model matrix is rank deficient so dropping %d column / coefficient",
-                              "fixed-effect model matrix is rank deficient so dropping %d columns / coefficients"),
-                     p - rnkX)
-      if (action != "silent") {
-        get(action)(msg, domain = NA)
-      }
-      ## Save properties of X
-      contr <- attr(X, "contrasts")
-      asgn <- attr(X, "assign")
-
-        ## Return the columns correponding to the first qr.x$rank pivot
-        ## elements of X:
-        keep <- qr.X$pivot[seq_len(rnkX)]
-        dropped.names <- colnames(X[,-keep,drop=FALSE])
-        X <- X[, keep, drop = FALSE]
-        if (rankMatrix(X, tol=tol, method=method) < ncol(X))
-            stop(gettextf("Dropping columns failed to produce full column rank design matrix"),
-                 call. = FALSE)
-
-        ## Re-assign relevant attributes:
-        if(!is.null(contr)) attr(X, "contrasts") <- contr
-        if(!is.null(asgn))  attr(X, "assign")    <- asgn[keep]
-        attr(X, "msgRankdrop") <- msg
-        attr(X, "col.dropped") <- setNames(qr.X$pivot[(rnkX+1L):p],
-                                           dropped.names)
-    }
-    X
-}
 
 ## Local Variables:
 ## ess-indent-offset: 2

@@ -1,6 +1,6 @@
 ###                  Create a list of lm objects
 ###
-### Copyright 2005-2018  The R Core team
+### Copyright 2005-2022  The R Core team
 ### Copyright 1997-2003  Jose C. Pinheiro,
 ###                      Douglas M. Bates <bates@stat.wisc.edu>
 #
@@ -22,36 +22,6 @@ lmList <-
   ## a list of lm objects from a formula or a groupedData object
   function(object, data, level, subset, na.action = na.fail, pool = TRUE, warn.lm = TRUE)
   UseMethod("lmList")
-
-if(getRversion() < "3.5.0") {
-##' Utility for lmList() and nlsList(): Collect errors from a list \code{val},
-##' produce a "summary warning" and keep that message as "warningMsg" attribute
-warnErrList <- function(val, warn = TRUE) {
-  errs <- vapply(val, inherits, NA, what = "error")
-  if (any(errs)) {
-    v.err <- val[errs]
-    e.call <- paste(deparse(conditionCall(v.err[[1]])), collapse = "\n")
-    tt <- table(vapply(v.err, conditionMessage, ""))
-    msg <-
-      if(length(tt) == 1)
-        sprintf(ngettext(tt[[1]],
-                         "%d error caught in %s: %s",
-                         "%d times caught the same error in %s: %s"),
-                tt[[1]], e.call, names(tt)[[1]])
-      else ## at least two different errors caught
-        paste(gettextf(
-          "%d errors caught in %s.  The error messages and their frequencies are",
-          sum(tt), e.call),
-          paste(capture.output(sort(tt)), collapse="\n"), sep="\n")
-
-    if(warn)
-	warning(msg, call. = FALSE, domain = NA)
-    val[errs] <- list(NULL)
-    attr(val, "warningMsg") <- msg
-  }
-  val
-}
-}# R <= 3.4.x
 
 lmList.groupedData <-
   function(object, data, level, subset, na.action = na.fail, pool = TRUE, warn.lm = TRUE)
@@ -149,7 +119,7 @@ augPred.lmList <-
     pr.var <- asOneSidedFormula(primary)[[2L]]
     primary <- eval(pr.var, data)
   }
-  prName <- deparse1(pr.var)
+  prName <- c_deparse(pr.var)
   newprimary <- seq(from = minimum, to = maximum, length.out = length.out)
   groups <- getGroups(object)
   grName <- deparse(gr.v <- getGroupsFormula(object)[[2]])
@@ -199,22 +169,13 @@ coef.lmList <-
   ## size the data frame to cope with combined levels for factors
   ## and name the columns so can fill by name
   if (any(non.null)) {
-    ## n.b. can't use vapply here
     coefNames <- unique(unlist(lapply(coefs[non.null], names)))
-    co <- matrix(NA,
+    co <- matrix(NA_real_,
                  ncol=length(coefNames),
                  nrow=length(coefs),
-                 byrow=TRUE, dimnames=list(names(object), coefNames))
-    ## template <- coefs[non.null][[1]]
-    ## if (is.numeric(template)) {
-    ##   co <- matrix(template,
-    ## 	      ncol = length(template),
-    ## 	      nrow = length(coefs),
-    ## 	      byrow = TRUE,
-    ## 	      dimnames = list(names(object), names(template)))
-    for (i in names(object)) {
-      co[i, names(coefs[[i]])] <-
-        if (is.null(coefs[[i]])) { NA } else coefs[[i]]
+                 dimnames=list(names(object), coefNames))
+    for (i in which(non.null)) {
+      co[i, names(coefs[[i]])] <- coefs[[i]]
     }
     coefs <- as.data.frame(co)
     effectNames <- names(coefs)
@@ -246,7 +207,6 @@ coef.lmList <-
     attr(coefs, "grpNames") <- deparse(getGroupsFormula(object)[[2]])
     class(coefs) <- c("coef.lmList", "ranef.lmList", class(coefs))
   }
-  ##}
   coefs
 }
 
@@ -669,7 +629,7 @@ plot.lmList <-
   if (inherits(data, "groupedData")) {	# save labels and units, if present
     ff <- formula(data)
     rF <- deparse(getResponseFormula(ff)[[2]])
-    cF <- deparse1(getCovariateFormula(ff)[[2]])
+    cF <- c_deparse(getCovariateFormula(ff)[[2]])
     lbs <- attr(data, "labels")
     unts <- attr(data, "units")
     if (!is.null(lbs$x)) cL <- paste(lbs$x, unts$x) else cF <- NULL
@@ -693,7 +653,7 @@ plot.lmList <-
   argForm <- ~ .x
   argData <- as.data.frame(.x)
   if (is.null(xlab <- attr(.x, "label"))) {
-    xlab <- deparse1(covF[[2]])
+    xlab <- c_deparse(covF[[2]])
     if (!is.null(cF) && (xlab == cF)) xlab <- cL
     else if (!is.null(rF) && (xlab == rF)) xlab <- rL
   }
@@ -872,7 +832,7 @@ predict.lmList <-
 	aux <- predict(object[[i]], myData[[i]], se.fit = TRUE)
 	if(pool) {
 	  val[[i]] <- data.frame(fit = aux$fit,
-				 se.fit = aux$se.fit*poolSD/aux$res)
+				 se.fit = aux$se.fit*poolSD/aux$residual.scale)
 	} else {
 	  val[[i]] <- data.frame(fit = aux$fit, se.fit = aux$se.fit)
 	}
@@ -887,7 +847,7 @@ predict.lmList <-
 		 aux <- predict(el, newdata, se.fit = se.fit)
 		 if(se.fit) {
 		   data.frame(fit = aux$fit,
-			      se.fit = aux$se.fit*poolSD/aux$res)
+			      se.fit = aux$se.fit*poolSD/aux$residual.scale)
 		 } else {
 		   aux
 		 }
@@ -956,7 +916,7 @@ print.lmList <- function(x, pool = attr(x, "pool"), ...)
   cat("Call:\n")
   form <- formula(x)
   cat("  Model:", deparse(getResponseFormula(form)[[2]]),
-      "~", deparse1(getCovariateFormula(form)[[2]]), "|",
+      "~", c_deparse(getCovariateFormula(form)[[2]]), "|",
       deparse(getGroupsFormula(x)[[2]]), "\n")
   if (!is.null(mCall$level)) {
     cat(" Level:", mCall$level, "\n")
@@ -977,14 +937,12 @@ print.lmList <- function(x, pool = attr(x, "pool"), ...)
   invisible(x)
 }
 
-print.summary.lmList <- function(x, digits = max(3, getOption("digits") - 3),
-                                 signif.stars = getOption("show.signif.stars"),
-                                 ...)
+print.summary.lmList <- function(x, ...)
 {
   cat("Call:\n")
   form <- formula(x)
   cat("  Model:", deparse(getResponseFormula(form)[[2]]),
-      "~", deparse1(getCovariateFormula(form)[[2]]), "|",
+      "~", c_deparse(getCovariateFormula(form)[[2]]), "|",
       deparse(attr(x, "groupsForm")[[2]]), "\n")
   if (!is.null(x$call$level)) {
     cat(" Level:", x$call$level, "\n")
@@ -993,8 +951,7 @@ print.summary.lmList <- function(x, digits = max(3, getOption("digits") - 3),
   cat("Coefficients:\n")
   for(i in dimnames(coef(x))[[3]]) {
     cat("  ",i,"\n")
-    printCoefmat(coef(x)[,,i], digits = digits, signif.stars = signif.stars,
-            na.print = "NA", ...)
+    print(coef(x)[,,i], ...)
   }
   if(x$pool) {
     cat("\n")
@@ -1300,7 +1257,7 @@ summary.lmList <-
           ## TODO? just   identical(dnames[[1]], dnames[[2]]) :
           if (length(dnames[[1]]) == length(dnames[[2]]) &&
               all(dnames[[1]] == dnames[[2]])) { ## symmetric
-            val <- array(NA, dim=c(length(cfNms), length(cfNms), length(lst)),
+            val <- array(NA_real_, dim=c(length(cfNms), length(cfNms), length(lst)),
                          dimnames=list(cfNms, cfNms, names(lst)))
             for (ii in use.i) {
               use <- dimnames(lst[[ii]])[[1]]
@@ -1308,7 +1265,7 @@ summary.lmList <-
               ##       ----
             }
           } else {
-            val <- array(NA, dim=c(length(cfNms), dim(template)[2], length(lst)),
+            val <- array(NA_real_, dim=c(length(cfNms), dim(template)[2], length(lst)),
                          dimnames=list(cfNms, dnames[[2]], names(lst)))
             for (ii in use.i) {
               use <- dimnames(lst[[ii]])[[1]]
@@ -1342,7 +1299,7 @@ summary.lmList <-
     sum.lst <- lapply(object, function(el) if(!is.null(el)) summary(el))
     nonNull <- !vapply(sum.lst, is.null, NA)
     if(!any(nonNull)) return(NULL)
-    template <- sum.lst[[match(TRUE, nonNull)]] # the first non-null one
+    template <- sum.lst[[match(TRUE, nonNull)]] # the first one
     val <- as.list(setNames(nm = names(template)))
     for (i in names(template)) {
         val[[i]] <- lapply(sum.lst, `[[`, i)
@@ -1350,7 +1307,7 @@ summary.lmList <-
     }
     ## complete set of coefs [only used in to.3d.array()]
     cfNms <-
-      unique(unlist(sapply(sum.lst[nonNull],
+      unique(unlist(lapply(sum.lst[nonNull],
                               function(x) dimnames(x[['coefficients']])[[1]])))
     ## re-arrange the matrices into 3d arrays
     for(i in c("parameters", "cov.unscaled", "correlation", "coefficients"))

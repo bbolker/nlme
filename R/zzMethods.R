@@ -1,6 +1,6 @@
 ###   Miscellaneous methods that must be defined last in the library
 ###
-### Copyright 2007-2018 The R Core team
+### Copyright 2007-2022  The R Core Team
 ### Copyright 1997-2003  Jose C. Pinheiro,
 ###                      Douglas M. Bates <bates@stat.wisc.edu>
 #
@@ -19,6 +19,13 @@
 #
 
 `%||%` <- function(x, y) if(is.null(x)) y else x
+
+## used in test scripts to switch on additional maintainer checks
+doExtras <- function ()
+{
+    interactive() || nzchar(Sys.getenv("R_nlme_check_extra")) ||
+        identical("true", unname(Sys.getenv("R_PKG_CHECKING_doExtras")))
+}
 
 ## Note that  require( stats )  has already happened ...
 
@@ -58,9 +65,9 @@ extractAIC.gls <- extractAIC.lme <- function(fit, scale, k = 2, ...)
     c(edf,  -2*res + k * edf)
 }
 
-terms.gls <- function(x, ...) terms(formula(x), ...)
-if(FALSE)## Not needed, because 'lme' object has "terms" attribute:
-    terms.lme <- function(x, ...) terms(formula(x), ...)
+## no longer needed, because gls() and lme() keep the model "terms"
+## terms.gls <- function(x, ...) terms(formula(x), ...)
+## terms.lme <- function(x, ...) terms(formula(x), ...)
 ## end{from MASS}
 
 
@@ -78,16 +85,6 @@ confint.nlsList <- function(object, ...) {
     sapply(object, function(ob) tryCatch(confint(ob, ...), error = function(e)
 	structure(c(NA,NA), errMsg = conditionMessage(e))),
 	simplify=FALSE)
-}
-
-.onLoad <- function(libname, pkgname) {
-  if (getRversion() < "4.0.0") {
-    ## NB: R >= 4.0.0's deparse1() is a generalization of previous c_deparse()
-    assign('deparse1', envir = topenv(),
-           function (expr, collapse = " ", width.cutoff = 500L, ...)
-             paste(deparse(expr, width.cutoff, ...), collapse = collapse)
-           )
-  }
 }
 
 .ns <- environment() # == asNamespace("nlme")
