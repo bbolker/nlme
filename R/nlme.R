@@ -777,7 +777,8 @@ nlme.formula <-
                        control = controlvals)
   parMap <- attr(nlmeSt, "pmap")
 
-  decomp <- length(coef(nlmeSt)) == length(coef(nlmeSt$reStruct)) && !needUpdate(nlmeSt)
+  decomp <- length(coef(nlmeSt)) == length(coef(nlmeSt$reStruct)) && !needUpdate(nlmeSt) && length(nlmeSt == 1)
+  ## last condition is from https://bugs.r-project.org/show_bug.cgi?id=17712
   if(decomp) { # can do one decomposition
     ## need to save conLin for calculating updating between steps
     oldConLin <- attr(nlmeSt, "conLin")
