@@ -76,7 +76,7 @@
 \donttest{% takes too long for routine R CMD check
 orthSim <-
    simulate.lme(list(fixed = distance ~ age, data = Orthodont,
-                     random = ~ 1 | Subject), nsim = 200,
+                     random = ~ 1 | Subject), nsim = 200, seed = 1001,
                 m2 = list(random = ~ age | Subject))
 }% dont ==> check in ../tests/predict.lme.R
 }
