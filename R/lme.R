@@ -277,6 +277,9 @@ lme.formula <-
   contr <- c(contr, auxContr[is.na(match(names(auxContr), names(contr)))])
   contr <- contr[!unlist(lapply(contr, is.null))]
   X <- model.matrix(fixed, data=X)
+  ## check rank/drop again (why do we recompute here)?
+  ## (check attributes of X instead?)
+  X <- chkRank.drop.cols(X, action = controlvals$rankdefAction)
   y <- eval(fixed[[2L]], dataMix)
   ncols <- c(ncols, dim(X)[2L], 1)
   Q <- ncol(grps)
