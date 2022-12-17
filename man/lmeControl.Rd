@@ -77,8 +77,15 @@ lmeControl(maxIter = 50, msMaxIter = 50, tolerance = 1e-6, niterEM = 25,
    \code{FALSE} signals an error; if \code{NA}, such a situation only gives
    a warning, as in \pkg{nlme} versions prior to 2019; if true, no message
    is given at all.}
-   %% msg: "fewer observations than random effects in all level <Q> groups"
- \item{\dots}{further named control arguments to be passed, depending on
+   %% msg: "fewer observations than random effects in all level <Q>
+   %% groups"
+  \item{rankdefAction}{Determines what happens if the fixed-effect model
+     matrix is rank-deficient (i.e., has multicollinear predictor
+     variables/columns); the choices are \code{"skip"} (don't test; best
+     for large data sets where the check might be slow); \code{"silent"}
+     (drop collinear columns silently); \code{"message"}, \code{"warn"}
+     or \code{"stop"}.}
+  \item{\dots}{further named control arguments to be passed, depending on
    \code{opt}, to \code{\link{nlminb}} (those from \code{abs.tol} down)
    or \code{\link{optim}} (those except \code{trace} and \code{maxit};
    \code{reltol} is used only from the second iteration).}

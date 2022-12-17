@@ -470,7 +470,11 @@ getFixDF <- function(X, grps, ngrps, assign = attr(X, "assign"), terms)
     if (attr(terms, "intercept") > 0) {
       namTerms <- c("(Intercept)", namTerms)
     }
+    if (!is.null(dropped <- attr(X, "col.dropped"))) {
+      namTerms <- namTerms[-dropped]
+    }
     namTerms <- factor(assign, labels = namTerms)
+    
     assign <- split(order(assign), namTerms)
   }
   ## function to check if a vector is (nearly) a multiple of (1,1,...,1)
@@ -2861,6 +2865,7 @@ lmeControl <-
            optimMethod = "BFGS", natural = TRUE,
            sigma = NULL, ## 17-11-2015; Fixed sigma patch; SH Heisterkamp; Quantitative Solutions
            allow.n.lt.q = FALSE, # 23-01-2019 (NA would be back compatible)
+           rankdefAction = "message",
            ...)
 {
   if(is.null(sigma))
@@ -2875,7 +2880,66 @@ lmeControl <-
        minAbsParApVar = minAbsParApVar, natural = natural,
        sigma = sigma,
        allow.n.lt.q = allow.n.lt.q,
+       rankdefAction = rankdefAction,
        ...)
+}
+
+
+## slightly simplified version from lme4
+chkRank.drop.cols <- function(X,
+                              action = c("silent", "skip",
+                                         "message", "warning", "stop"),
+                              tol = 1e-7, method = "qr") {
+  ## Test and match arguments:
+  stopifnot(is.matrix(X))
+  action <- match.arg(action)
+ 
+  if (action == "skip") return(X)
+
+  p <- ncol(X)
+  if (action == "stop") {
+    if ((rX <- rankMatrix(X, tol=tol, method=method)) < p)
+      stop(gettextf(sub("\n +", "\n",
+                        "the fixed-effects model matrix is column rank deficient (rank(X) = %d < %d = p);
+                   the fixed effects will be jointly unidentifiable"),
+                   rX, p), call. = FALSE)
+    } else {
+      ## Perform the qr-decomposition of X using LINPACK method,
+      ## as we need the "good" pivots (and the same as lm()):
+      ## this rankMatrix(X, method="qrLINPACK"):  FIXME?  rankMatrix(X, method= "qr.R")
+      qr.X <- qr(X, tol = tol, LAPACK = FALSE)
+      rnkX <- qr.X$rank
+      if (rnkX == p)
+        return(X) ## return X if X has full column rank
+
+      msg <- sprintf(ngettext(p - rnkX,
+                              "fixed-effect model matrix is rank deficient so dropping %d column / coefficient",
+                              "fixed-effect model matrix is rank deficient so dropping %d columns / coefficients"),
+                     p - rnkX)
+      if (action != "silent") {
+        get(action)(msg, domain = NA)
+      }
+      ## Save properties of X
+      contr <- attr(X, "contrasts")
+      asgn <- attr(X, "assign")
+
+        ## Return the columns correponding to the first qr.x$rank pivot
+        ## elements of X:
+        keep <- qr.X$pivot[seq_len(rnkX)]
+        dropped.names <- colnames(X[,-keep,drop=FALSE])
+        X <- X[, keep, drop = FALSE]
+        if (rankMatrix(X, tol=tol, method=method) < ncol(X))
+            stop(gettextf("Dropping columns failed to produce full column rank design matrix"),
+                 call. = FALSE)
+
+        ## Re-assign relevant attributes:
+        if(!is.null(contr)) attr(X, "contrasts") <- contr
+        if(!is.null(asgn))  attr(X, "assign")    <- asgn[keep]
+        attr(X, "msgRankdrop") <- msg
+        attr(X, "col.dropped") <- setNames(qr.X$pivot[(rnkX+1L):p],
+                                           dropped.names)
+    }
+    X
 }
 
 

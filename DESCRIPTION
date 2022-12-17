@@ -16,7 +16,7 @@ Authors@R: c(person("José", "Pinheiro", role = "aut", comment = "S version"),
 Contact: see 'MailingList'
 Description: Fit and compare Gaussian linear and nonlinear mixed-effects models.
 Depends: R (>= 3.5.0)
-Imports: graphics, stats, utils, lattice
+Imports: graphics, stats, utils, lattice, Matrix
 Suggests: Hmisc, MASS, SASmixed
 LazyData: yes
 Encoding: UTF-8
