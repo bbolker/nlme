@@ -355,11 +355,12 @@ Initialize.varIdent <-
     if (length(coef(object)) > 0) { # initialized - nothing to do
       return(object)
     }
-    strat <- attr(object, "groups") <-
-      as.character(getGroups(data, form,
-                             level = length(splitFormula(grpForm, sep = "*")),
-                             sep = "*"))
-    if (length((uStrat <- unique(strat))) == 1) {
+    strat <- getGroups(data, form,
+              level = length(splitFormula(grpForm, sep = "*")),
+              sep = "*")
+    uStrat <- if (is.factor(strat)) levels(strat) else unique(strat)
+    strat <- attr(object, "groups") <- as.character(strat)
+    if (length(uStrat) == 1) {
       ## equal variances structure
       return(Initialize(varIdent(), data))
     }
